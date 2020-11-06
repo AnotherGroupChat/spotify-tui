@@ -1,4 +1,5 @@
 use crate::event::Key;
+use crate::error::VisualizationError;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -551,10 +552,10 @@ impl UserConfig {
     Ok(())
   }
 
-  pub fn get_visualizer(&self) -> Result<VisualApp, String> {
+  pub fn get_visualizer(&self) -> Result<VisualApp, VisulizationError> {
     match self.visuals.current {
       Some(index) => Ok(self.visuals.plugins[index].clone()),
-      None => Err("No visualizer plugin set.".to_string()),
+      None => "No visualizer plugin set.",
     }
   }
   pub fn get_visualizer_or_default(&self) -> VisualApp {

@@ -1,6 +1,7 @@
 use super::util;
 use crate::app::App;
 use crate::user_config::VisualStyle;
+use crate::error::VisualizationError;
 use rhai::{
   serde::{from_dynamic, to_dynamic},
   Array, Engine, Scope,
@@ -121,7 +122,7 @@ where
     // Invalid viz
     match visual_app.style {
       VisualStyle::Bar => {
-        let data: Result<Vec<(String, u64)>, String> = {
+        let data: Result<Vec<(String, u64)>, VisualizationError> = {
           // TODO: Set up raw engine
           match &app.visualizer {
             Ok(ast) => {
@@ -175,7 +176,7 @@ where
               );
             f.render_widget(analysis_bar, chunks[1]);
           }
-          Err(message) => {
+          Err(VisualizationError::Warning(message)) => {
             let ts: Vec<Spans> = vec![Spans::from(message)];
             let p = Paragraph::new(ts)
               .block(bar_chart_block)
