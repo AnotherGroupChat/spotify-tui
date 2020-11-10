@@ -1,5 +1,5 @@
-use crate::event::Key;
 use crate::error::VisualizationError;
+use crate::event::Key;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -246,7 +246,7 @@ pub struct VisualsString {
 
 #[derive(Clone)]
 pub struct VisualApp {
-  pub warning: Option<String>,
+  pub warning: Option<VisualizationError>,
   pub path: PathBuf,
   pub style: VisualStyle,
   pub name: String,
@@ -496,7 +496,7 @@ impl UserConfig {
           let warning = if plugin_file.exists() {
             None
           } else {
-            Some("Plugin cannot be found.".to_string())
+            Some(VisualizationError::from("Plugin cannot be found."))
           };
 
           let app = VisualApp {
@@ -552,10 +552,10 @@ impl UserConfig {
     Ok(())
   }
 
-  pub fn get_visualizer(&self) -> Result<VisualApp, VisulizationError> {
+  pub fn get_visualizer(&self) -> Result<VisualApp, VisualizationError> {
     match self.visuals.current {
       Some(index) => Ok(self.visuals.plugins[index].clone()),
-      None => "No visualizer plugin set.",
+      None => Err(VisualizationError::from("No visualizer plugin set.")),
     }
   }
   pub fn get_visualizer_or_default(&self) -> VisualApp {
@@ -563,7 +563,7 @@ impl UserConfig {
       Ok(visualizer) => visualizer,
       Err(err) => VisualApp {
         style: VisualStyle::Invalid,
-        warning: Some(err),
+        warning: Some(VisualizationError::from(err)),
         path: PathBuf::new(),
         name: "<None>".to_string(),
       },

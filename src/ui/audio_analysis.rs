@@ -1,7 +1,7 @@
 use super::util;
 use crate::app::App;
-use crate::user_config::VisualStyle;
 use crate::error::VisualizationError;
+use crate::user_config::VisualStyle;
 use rhai::{
   serde::{from_dynamic, to_dynamic},
   Array, Engine, Scope,
@@ -147,15 +147,27 @@ where
                             .collect(),
                         )
                       }
-                      Err(err) => Err(format!("Unable to type cast: {}", err)),
+                      Err(err) => Err(VisualizationError::from(format!(
+                        "Unable to type cast: {}",
+                        err
+                      ))),
                     },
-                    Err(err) => Err(format!("Error in script: {}", err)),
+                    Err(err) => Err(VisualizationError::from(format!(
+                      "Error in script: {}",
+                      err
+                    ))),
                   }
                 }
-                Err(err) => Err(format!("Unable to serialize spotify information: {}", err)),
+                Err(err) => Err(VisualizationError::from(format!(
+                  "Unable to serialize spotify information: {}",
+                  err
+                ))),
               }
             }
-            Err(err) => Err(format!("Compilation error: {}", err)),
+            Err(err) => Err(VisualizationError::from(format!(
+              "Compilation error: {}",
+              err
+            ))),
           }
         };
         match data {

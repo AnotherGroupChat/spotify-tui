@@ -1,6 +1,6 @@
 use super::user_config::UserConfig;
-use crate::network::IoEvent;
 use crate::error::VisualizationError;
+use crate::network::IoEvent;
 use anyhow::anyhow;
 use rhai::{Engine, AST};
 use rspotify::{
@@ -53,7 +53,10 @@ pub fn load_visuals(user_config: &UserConfig) -> Result<AST, VisualizationError>
   // Read scripts from configuration
   match user_config.get_visualizer() {
     Ok(app) => match engine.compile_file(app.path) {
-      Err(err) => Err(VisualizationError::Warning(format!("Compilation Error: {}", err))),
+      Err(err) => Err(VisualizationError::Warning(format!(
+        "Compilation Error: {}",
+        err
+      ))),
       Ok(ast) => Ok(ast),
     },
     Err(message) => Err(message),
@@ -405,7 +408,7 @@ impl Default for App {
       spotify_token_expiry: SystemTime::now(),
       dialog: None,
       confirm: false,
-      visualizer: "Visualizer never initialized.",
+      visualizer: Err(VisualizationError::from("Visualizer never initialized.")),
     }
   }
 }
