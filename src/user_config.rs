@@ -352,7 +352,7 @@ impl UserConfig {
 
           if self.path_to_plugin.is_none() {
             let paths = PluginPaths {
-              plugin_path: plugin_dir.to_path_buf(),
+              plugin_path: plugin_dir,
             };
             self.path_to_plugin = Some(paths);
           }
@@ -467,7 +467,7 @@ impl UserConfig {
   pub fn load_visuals(&mut self, visuals: VisualsString) -> Result<()> {
     let mut index: usize = 0;
     let mut default_index: Option<usize> = None;
-    let default_plugin = visuals.default.unwrap_or("<None>".to_string());
+    let default_plugin = visuals.default.unwrap_or_else(|| "<None>".to_string());
     let plugin_path = match &self.path_to_plugin {
       Some(path) => path,
       None => {
@@ -563,7 +563,7 @@ impl UserConfig {
       Ok(visualizer) => visualizer,
       Err(err) => VisualApp {
         style: VisualStyle::Invalid,
-        warning: Some(VisualizationError::from(err)),
+        warning: Some(err),
         path: PathBuf::new(),
         name: "<None>".to_string(),
       },

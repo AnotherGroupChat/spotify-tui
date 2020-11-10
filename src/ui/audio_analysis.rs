@@ -93,10 +93,9 @@ where
                     .to_vec()
                     .iter()
                     .map(|item| {
-                      item
-                        .clone()
-                        .try_cast::<String>()
-                        .unwrap_or("Bad analysis provided, could not cast to String.".to_string())
+                      item.clone().try_cast::<String>().unwrap_or_else(|| {
+                        "Bad analysis provided, could not cast to String.".to_string()
+                      })
                     })
                     .collect()
                 }
@@ -143,7 +142,7 @@ where
                             .labels
                             .iter()
                             .zip(data.counts.iter())
-                            .map(|(label, count)| (label.clone(), count.clone()))
+                            .map(|(label, count)| (label.clone(), *count))
                             .collect(),
                         )
                       }
