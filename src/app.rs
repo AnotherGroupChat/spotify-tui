@@ -60,34 +60,145 @@ const DEFAULT_ROUTE: Route = Route {
   hovered_block: ActiveBlock::Library,
 };
 
-pub fn load_visuals(user_config: &UserConfig) -> Result<Engine, VisualizationError> {
-  let mut engine = Engine::new_raw();
-  // First read from script so we don't have to keep recompiling
-  // Make struct to serialize from: https://schungx.github.io/rhai/rust/serde.html#deserialization
-  // Read scripts from configuration
-  match user_config.get_visualizer() {
-    Ok(app) => match engine.compile_file(app.path) {
-      Err(err) => Err(VisualizationError::Warning(format!(
-        "Compilation Error: {}",
-        err
-      ))),
-      Ok(ast) => match Module::eval_ast_as_new(Scope::new(), &ast, &engine) {
-        Ok(ref mut module) => {
-          ArithmeticPackage::init(module);
-          LogicPackage::init(module);
-          BasicArrayPackage::init(module);
-          BasicMapPackage::init(module);
-          BasicMathPackage::init(module);
-          MoreStringPackage::init(module);
-          engine.load_package(module.clone());
-          Ok(engine)
+enum VizPlugin {
+  PluginError(VisualizationError),
+  VizEngine(Engine),
+}
+
+#[derive(Clone)]
+pub struct Visualization {
+  data: Plugin,
+  hook: AST,
+}
+
+impl Visualization {
+  pub fn new(user_config: &UserConfig) -> Visualization {
+    let mut engine = Engine::new_raw();
+
+    let ast = engine.compile(
+      r#"
+      fn analysis_hook(a, b){
+          analysis(a, b)
+      };
+      fn draw_hook(a, b){
+          draw(a, b)
+      };"#,
+    )?;
+
+    // First read from script so we don't have to keep recompiling
+    // Make struct to serialize from: https://schungx.github.io/rhai/rust/serde.html#deserialization
+    // Read scripts from configuration
+    match user_config.get_visualizer() {
+      Ok(app) => match engine.compile_file(app.path) {
+        Err(err) => Visualization {
+          data: PluginError(VisualizationError::Warning(format!(
+            "Compilation Error: {}",
+            err
+          ))),
+          hook: ast,
+        },
+        Ok(ast) => match Module::eval_ast_as_new(Scope::new(), &ast, &engine) {
+          Ok(ref mut module) => {
+            ArithmeticPackage::init(module);
+            LogicPackage::init(module);
+            BasicArrayPackage::init(module);
+            BasicMapPackage::init(module);
+            BasicMathPackage::init(module);
+            MoreStringPackage::init(module);
+            engine.load_package(module.clone());
+            Visualization {
+              data: VizEngine(engine),
+              hook: ast,
+            }
+          }
+          Err(err) => Visualization {
+            data: PluginError(VisualizationError::Warning(format!(
+              "Failed to compile module",
+              err
+            ))),
+            hook: ast,
+          },
+        },
+      },
+      Err(message) => Visualization {
+        data: PluginError(message),
+        hook: ast,
+      },
+    }
+  }
+  fn eval<D>(
+    &self,
+    analysis: Analysis,
+    progress_seconds: u64,
+    hook: String,
+    callback: String,
+  ) -> Result<Vec<D>, VisualizationError> {
+    match &self.data {
+      VizEngine(engine) => match to_dynamic(analysis) {
+        Ok(dynamic_analysis) => {
+          match engine.call_fn(
+            &mut Scope::new(),
+            &self.hook,
+            hook,
+            (dynamic_analysis, progress_seconds),
+          ) {
+            Ok(data) => match from_dynamic(&data) {
+              Ok(data) => callback(data),
+              Err(err) => Err(VisualizationError::from(format!(
+                "Unable to type cast: {}",
+                err
+              ))),
+            },
+            Err(err) => Err(VisualizationError::from(format!(
+              "Error in script: {}",
+              err
+            ))),
+          }
         }
-        Err(err) => Err(VisualizationError::Warning(format!(
-          "Failed to compile module",
+        Err(err) => Err(VisualizationError::from(format!(
+          "Unable to serialize spotify information: {}",
+          err
         ))),
       },
-    },
-    Err(message) => Err(message),
+      PluginError(err) => Err(VisualizationError::from(format!(
+        "Compilation error: {}",
+        err
+      ))),
+    }
+  }
+
+  pub fn analyze(&self, analysis: Analysis, progress_seconds: u64) -> Vec<String> {
+    let txt: Array = txt;
+    txt
+      .to_vec()
+      .iter()
+      .map(|item| {
+        item
+          .clone()
+          .try_cast::<String>()
+          .unwrap_or_else(|| "Bad analysis provided, could not cast to String.".to_string())
+      })
+      .collect();
+  }
+
+  pub fn compute_barchart(
+    &self,
+    analysis: Analysis,
+    progress_seconds: u64,
+  ) -> Result<Vec<D>, VisualizationError> {
+    match style {
+      VisualStyle::Bar => {
+        let data: BarChartInfo = data;
+        Ok(
+          data
+            .labels
+            .iter()
+            .zip(data.counts.iter())
+            .map(|(label, count)| (label.clone(), *count))
+            .collect(),
+        )
+      }
+    }
   }
 }
 
@@ -355,11 +466,11 @@ pub struct App {
   pub dialog: Option<String>,
   pub confirm: bool,
   // Exposed Rhai engine to allow for module extensions.
-  // TODO: Create a Visulization Struct
+  // TODO: Create a Visualization Struct
   // Has get Engine
   // Has set Engine
   // Has closure call
-  pub visualizer: Result<Engine, VisualizationError>,
+  pub visualizer: Visualization,
 }
 
 impl Default for App {
@@ -451,7 +562,7 @@ impl App {
     user_config: UserConfig,
     spotify_token_expiry: SystemTime,
   ) -> App {
-    let visualizer = load_visuals(&user_config);
+    let visualizer = Visualization::new(&user_config);
     App {
       io_tx: Some(io_tx),
       user_config,
