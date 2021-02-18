@@ -52,7 +52,7 @@ pub fn handler(key: Key, app: &mut App) {
       }
       // Albums,
       3 => {
-        app.dispatch(IoEvent::GetCurrentUserSavedAlbums(Some(0)));
+        app.dispatch(IoEvent::GetCurrentUserSavedAlbums(None));
         app.push_navigation_stack(RouteId::AlbumList, ActiveBlock::AlbumList);
       }
       //  Artists,
@@ -62,6 +62,7 @@ pub fn handler(key: Key, app: &mut App) {
       }
       // Podcasts,
       5 => {
+        app.dispatch(IoEvent::GetCurrentUserSavedShows(None));
         app.push_navigation_stack(RouteId::Podcasts, ActiveBlock::Podcasts);
       }
       // This is required because Rust can't tell if this pattern in exhaustive

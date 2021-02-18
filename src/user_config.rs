@@ -219,6 +219,12 @@ pub struct BehaviorConfigString {
   pub tick_rate_milliseconds: Option<u64>,
   pub enable_text_emphasis: Option<bool>,
   pub show_loading_indicator: Option<bool>,
+  pub liked_icon: Option<String>,
+  pub shuffle_icon: Option<String>,
+  pub repeat_track_icon: Option<String>,
+  pub repeat_context_icon: Option<String>,
+  pub playing_icon: Option<String>,
+  pub paused_icon: Option<String>,
 }
 
 #[derive(Clone)]
@@ -228,6 +234,12 @@ pub struct BehaviorConfig {
   pub tick_rate_milliseconds: u64,
   pub enable_text_emphasis: bool,
   pub show_loading_indicator: bool,
+  pub liked_icon: String,
+  pub shuffle_icon: String,
+  pub repeat_track_icon: String,
+  pub repeat_context_icon: String,
+  pub playing_icon: String,
+  pub paused_icon: String,
 }
 
 #[derive(Clone)]
@@ -314,6 +326,12 @@ impl UserConfig {
         tick_rate_milliseconds: 250,
         enable_text_emphasis: true,
         show_loading_indicator: true,
+        liked_icon: "♥".to_string(),
+        shuffle_icon: "🔀".to_string(),
+        repeat_track_icon: "🔂".to_string(),
+        repeat_context_icon: "🔁".to_string(),
+        playing_icon: "▶".to_string(),
+        paused_icon: "⏸".to_string(),
       },
       visuals: VisualPlugins {
         current: None,
@@ -461,6 +479,30 @@ impl UserConfig {
       self.behavior.show_loading_indicator = loading_indicator;
     }
 
+    if let Some(liked_icon) = behavior_config.liked_icon {
+      self.behavior.liked_icon = liked_icon;
+    }
+
+    if let Some(paused_icon) = behavior_config.paused_icon {
+      self.behavior.paused_icon = paused_icon;
+    }
+
+    if let Some(playing_icon) = behavior_config.playing_icon {
+      self.behavior.playing_icon = playing_icon;
+    }
+
+    if let Some(shuffle_icon) = behavior_config.shuffle_icon {
+      self.behavior.shuffle_icon = shuffle_icon;
+    }
+
+    if let Some(repeat_track_icon) = behavior_config.repeat_track_icon {
+      self.behavior.repeat_track_icon = repeat_track_icon;
+    }
+
+    if let Some(repeat_context_icon) = behavior_config.repeat_context_icon {
+      self.behavior.repeat_context_icon = repeat_context_icon;
+    }
+
     Ok(())
   }
 
@@ -568,6 +610,10 @@ impl UserConfig {
         name: "<None>".to_string(),
       },
     }
+  }
+
+  pub fn padded_liked_icon(&self) -> String {
+    format!("{} ", &self.behavior.liked_icon)
   }
 }
 
