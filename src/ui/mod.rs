@@ -3,8 +3,8 @@ pub mod help;
 pub mod util;
 use super::{
   app::{
-    ActiveBlock, AlbumTableContext, App, ArtistBlock, RecommendationsContext, RouteId,
-    SearchResultBlock, LIBRARY_OPTIONS,
+    ActiveBlock, AlbumTableContext, App, ArtistBlock, EpisodeTableContext, RecommendationsContext,
+    RouteId, SearchResultBlock, LIBRARY_OPTIONS,
   },
   banner::BANNER,
 };
@@ -23,13 +23,14 @@ use tui::{
 use util::{
   create_artist_string, display_track_progress, get_artist_highlight_state, get_color,
   get_percentage_width, get_search_results_highlight_state, get_track_progress_percentage,
-  millis_to_minutes, SMALL_TERMINAL_WIDTH,
+  millis_to_minutes, BASIC_VIEW_HEIGHT, SMALL_TERMINAL_WIDTH,
 };
 
 pub enum TableId {
   Album,
   AlbumList,
   Artist,
+  Podcast,
   Song,
   RecentlyPlayed,
   MadeForYou,
@@ -258,7 +259,7 @@ where
       draw_artist_table(f, app, chunks[1]);
     }
     RouteId::Podcasts => {
-      draw_not_implemented_yet(f, app, chunks[1], ActiveBlock::Podcasts, "Podcasts");
+      draw_podcast_table(f, app, chunks[1]);
     }
     RouteId::Recommendations => {
       draw_recommendations_table(f, app, chunks[1]);
@@ -395,7 +396,7 @@ where
             song_name += "▶ "
           }
           if app.liked_song_ids_set.contains(&id) {
-            song_name += "♥ ";
+            song_name += &app.user_config.padded_liked_icon();
           }
 
           song_name += &item.name;
@@ -423,7 +424,7 @@ where
         .map(|item| {
           let mut artist = String::new();
           if app.followed_artist_ids_set.contains(&item.id.to_owned()) {
-            artist.push_str("♥ ");
+            artist.push_str(&app.user_config.padded_liked_icon());
           }
           artist.push_str(&item.name.to_owned());
           artist
@@ -457,7 +458,7 @@ where
           let mut album_artist = String::new();
           if let Some(album_id) = &item.id {
             if app.saved_album_ids_set.contains(&album_id.to_owned()) {
-              album_artist.push_str("♥ ");
+              album_artist.push_str(&app.user_config.padded_liked_icon());
             }
           }
           album_artist.push_str(&format!(
@@ -510,7 +511,14 @@ where
       Some(podcasts) => podcasts
         .items
         .iter()
-        .map(|item| format!("{:} - {}", item.name, item.publisher))
+        .map(|item| {
+          let mut show_name = String::new();
+          if app.saved_show_ids_set.contains(&item.id.to_owned()) {
+            show_name.push_str(&app.user_config.padded_liked_icon());
+          }
+          show_name.push_str(&format!("{:} - {}", item.name, item.publisher));
+          show_name
+        })
         .collect(),
       None => vec![],
     };
@@ -568,6 +576,58 @@ where
     app.artists_list_index,
     highlight_state,
   )
+}
+
+pub fn draw_podcast_table<B>(f: &mut Frame<B>, app: &App, layout_chunk: Rect)
+where
+  B: Backend,
+{
+  let header = TableHeader {
+    id: TableId::Podcast,
+    items: vec![
+      TableHeaderItem {
+        text: "Name",
+        width: get_percentage_width(layout_chunk.width, 2.0 / 5.0),
+        ..Default::default()
+      },
+      TableHeaderItem {
+        text: "Publisher(s)",
+        width: get_percentage_width(layout_chunk.width, 2.0 / 5.0),
+        ..Default::default()
+      },
+    ],
+  };
+
+  let current_route = app.get_current_route();
+
+  let highlight_state = (
+    current_route.active_block == ActiveBlock::Podcasts,
+    current_route.hovered_block == ActiveBlock::Podcasts,
+  );
+
+  if let Some(saved_shows) = app.library.saved_shows.get_results(None) {
+    let items = saved_shows
+      .items
+      .iter()
+      .map(|show_page| TableItem {
+        id: show_page.show.id.to_owned(),
+        format: vec![
+          show_page.show.name.to_owned(),
+          show_page.show.publisher.to_owned(),
+        ],
+      })
+      .collect::<Vec<TableItem>>();
+
+    draw_table(
+      f,
+      app,
+      layout_chunk,
+      ("Podcasts", &header),
+      &items,
+      app.shows_list_index,
+      highlight_state,
+    )
+  };
 }
 
 pub fn draw_album_table<B>(f: &mut Frame<B>, app: &App, layout_chunk: Rect)
@@ -831,20 +891,23 @@ pub fn draw_basic_view<B>(f: &mut Frame<B>, app: &App)
 where
   B: Backend,
 {
-  let chunks = Layout::default()
-    .direction(Direction::Vertical)
-    .constraints(
-      [
-        Constraint::Percentage(44),
-        Constraint::Min(6),
-        Constraint::Percentage(44),
-      ]
-      .as_ref(),
-    )
-    .margin(4)
-    .split(f.size());
+  // If space is negative, do nothing because the widget would not fit
+  if let Some(s) = app.size.height.checked_sub(BASIC_VIEW_HEIGHT) {
+    let space = s / 2;
+    let chunks = Layout::default()
+      .direction(Direction::Vertical)
+      .constraints(
+        [
+          Constraint::Length(space),
+          Constraint::Length(BASIC_VIEW_HEIGHT),
+          Constraint::Length(space),
+        ]
+        .as_ref(),
+      )
+      .split(f.size());
 
-  draw_playbar(f, app, chunks[1]);
+    draw_playbar(f, app, chunks[1]);
+  }
 }
 
 pub fn draw_playbar<B>(f: &mut Frame<B>, app: &App, layout_chunk: Rect)
@@ -925,7 +988,7 @@ where
       };
 
       let track_name = if app.liked_song_ids_set.contains(&item_id) {
-        format!("♥ {}", name)
+        format!("{}{}", &app.user_config.padded_liked_icon(), name)
       } else {
         name
       };
@@ -1104,37 +1167,6 @@ where
   f.render_widget(bottom_text, chunks[1]);
 }
 
-fn draw_not_implemented_yet<B>(
-  f: &mut Frame<B>,
-  app: &App,
-  layout_chunk: Rect,
-  block: ActiveBlock,
-  title: &str,
-) where
-  B: Backend,
-{
-  let current_route = app.get_current_route();
-  let highlight_state = (
-    current_route.active_block == block,
-    current_route.hovered_block == block,
-  );
-  let display_block = Block::default()
-    .title(Span::styled(
-      title,
-      get_color(highlight_state, app.user_config.theme),
-    ))
-    .borders(Borders::ALL)
-    .border_style(get_color(highlight_state, app.user_config.theme));
-
-  let text = Text::from("Not implemented yet!");
-
-  let not_implemented = Paragraph::new(text)
-    .style(Style::default().fg(app.user_config.theme.text))
-    .block(display_block)
-    .wrap(Wrap { trim: true });
-  f.render_widget(not_implemented, layout_chunk);
-}
-
 fn draw_artist_albums<B>(f: &mut Frame<B>, app: &App, layout_chunk: Rect)
 where
   B: Backend,
@@ -1191,7 +1223,7 @@ where
         let mut album_artist = String::new();
         if let Some(album_id) = &item.id {
           if app.saved_album_ids_set.contains(&album_id.to_owned()) {
-            album_artist.push_str("♥ ");
+            album_artist.push_str(&app.user_config.padded_liked_icon());
           }
         }
         album_artist.push_str(&format!(
@@ -1219,7 +1251,7 @@ where
       .map(|item| {
         let mut artist = String::new();
         if app.followed_artist_ids_set.contains(&item.id.to_owned()) {
-          artist.push_str("♥ ");
+          artist.push_str(&app.user_config.padded_liked_icon());
         }
         artist.push_str(&item.name.to_owned());
         artist
@@ -1347,7 +1379,11 @@ where
       .map(|album_page| TableItem {
         id: album_page.album.id.to_owned(),
         format: vec![
-          format!("♥ {}", &album_page.album.name),
+          format!(
+            "{}{}",
+            app.user_config.padded_liked_icon(),
+            &album_page.album.name
+          ),
           create_artist_string(&album_page.album.artists),
           album_page.album.release_date.to_owned(),
         ],
@@ -1404,53 +1440,77 @@ where
     current_route.hovered_block == ActiveBlock::EpisodeTable,
   );
 
-  let items = app
-    .episode_table
-    .episodes
-    .iter()
-    .map(|episode| {
-      let (played_str, time_str) = match episode.resume_point {
-        Some(ResumePoint {
-          fully_played,
-          resume_position_ms,
-        }) => (
-          if fully_played {
-            " ✔".to_owned()
-          } else {
-            "".to_owned()
-          },
-          format!(
-            "{} / {}",
-            millis_to_minutes(u128::from(resume_position_ms)),
-            millis_to_minutes(u128::from(episode.duration_ms))
+  if let Some(episodes) = app.library.show_episodes.get_results(None) {
+    let items = episodes
+      .items
+      .iter()
+      .map(|episode| {
+        let (played_str, time_str) = match episode.resume_point {
+          Some(ResumePoint {
+            fully_played,
+            resume_position_ms,
+          }) => (
+            if fully_played {
+              " ✔".to_owned()
+            } else {
+              "".to_owned()
+            },
+            format!(
+              "{} / {}",
+              millis_to_minutes(u128::from(resume_position_ms)),
+              millis_to_minutes(u128::from(episode.duration_ms))
+            ),
           ),
-        ),
-        None => (
-          "".to_owned(),
-          millis_to_minutes(u128::from(episode.duration_ms)),
-        ),
-      };
-      TableItem {
-        id: episode.id.to_owned(),
-        format: vec![
-          played_str,
-          episode.release_date.to_owned(),
-          episode.name.to_owned(),
-          time_str,
-        ],
-      }
-    })
-    .collect::<Vec<TableItem>>();
+          None => (
+            "".to_owned(),
+            millis_to_minutes(u128::from(episode.duration_ms)),
+          ),
+        };
+        TableItem {
+          id: episode.id.to_owned(),
+          format: vec![
+            played_str,
+            episode.release_date.to_owned(),
+            episode.name.to_owned(),
+            time_str,
+          ],
+        }
+      })
+      .collect::<Vec<TableItem>>();
 
-  draw_table(
-    f,
-    app,
-    layout_chunk,
-    ("Episodes", &header),
-    &items,
-    app.episode_table.selected_index,
-    highlight_state,
-  );
+    let title = match &app.episode_table_context {
+      EpisodeTableContext::Simplified => match &app.selected_show_simplified {
+        Some(selected_show) => {
+          format!(
+            "{} by {}",
+            selected_show.show.name.to_owned(),
+            selected_show.show.publisher
+          )
+        }
+        None => "Episodes".to_owned(),
+      },
+      EpisodeTableContext::Full => match &app.selected_show_full {
+        Some(selected_show) => {
+          format!(
+            "{} by {}",
+            selected_show.show.name.to_owned(),
+            selected_show.show.publisher
+          )
+        }
+        None => "Episodes".to_owned(),
+      },
+    };
+
+    draw_table(
+      f,
+      app,
+      layout_chunk,
+      (&title, &header),
+      &items,
+      app.episode_list_index,
+      highlight_state,
+    );
+  };
 }
 
 pub fn draw_made_for_you<B>(f: &mut Frame<B>, app: &App, layout_chunk: Rect)
@@ -1731,10 +1791,10 @@ fn draw_table<B>(
           }
         }
 
-        // Show this ♥ if the song is liked
+        // Show this the liked icon if the song is liked
         if let Some(liked_idx) = header.get_index(ColumnId::Liked) {
           if app.liked_song_ids_set.contains(item.id.as_str()) {
-            formatted_row[liked_idx] = " ♥".to_string();
+            formatted_row[liked_idx] = app.user_config.padded_liked_icon();
           }
         }
       }

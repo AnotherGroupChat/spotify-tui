@@ -2,15 +2,33 @@
 
 ## [Unreleased]
 
-- Implement next/previous page behavior for the Artists table [#604](https://github.com/Rigellute/spotify-tui/pull/604)
+- Add ability to seek from the CLI [#692](https://github.com/Rigellute/spotify-tui/pull/692)
+- Replace `clipboard` with `arboard` [#691](https://github.com/Rigellute/spotify-tui/pull/691)
+- Handle invalid Client ID/Secret [#668](https://github.com/Rigellute/spotify-tui/pull/668)
+- Implement some episode table functions [#698](https://github.com/Rigellute/spotify-tui/pull/698)
+- Fix default liked, shuffle, etc. icons to more recognizable symbols [#702](https://github.com/Rigellute/spotify-tui/pull/702)
+- Change `--like` that toggled the liked-state to explicit `--like` and `--dislike` flags [#717](https://github.com/Rigellute/spotify-tui/pull/717)
+
+## [0.23.0] - 2021-01-06
+
+### Fixed
+
 - Fix app crash when pressing Enter before a screen has loaded [#599](https://github.com/Rigellute/spotify-tui/pull/599)
-- Show saved albums when getting an artist [#612](https://github.com/Rigellute/spotify-tui/pull/612)
-- Transfer playback when changing device [#408](https://github.com/Rigellute/spotify-tui/pull/408)
 - Make layout more responsive to large/small screens [#502](https://github.com/Rigellute/spotify-tui/pull/502)
-- Search using Spotify share URLs and URIs like the desktop client [#623](https://github.com/Rigellute/spotify-tui/pull/623)
 - Fix use of incorrect playlist index when playing from an associated track table [#632](https://github.com/Rigellute/spotify-tui/pull/632)
 - Fix flickering help menu in small screens [#638](https://github.com/Rigellute/spotify-tui/pull/638)
 - Optimize seek [#640](https://github.com/Rigellute/spotify-tui/pull/640)
+- Fix centering of basic_view [#664](https://github.com/Rigellute/spotify-tui/pull/664)
+
+### Added
+
+- Implement next/previous page behavior for the Artists table [#604](https://github.com/Rigellute/spotify-tui/pull/604)
+- Show saved albums when getting an artist [#612](https://github.com/Rigellute/spotify-tui/pull/612)
+- Transfer playback when changing device [#408](https://github.com/Rigellute/spotify-tui/pull/408)
+- Search using Spotify share URLs and URIs like the desktop client [#623](https://github.com/Rigellute/spotify-tui/pull/623)
+- Make the liked icon configurable [#659](https://github.com/Rigellute/spotify-tui/pull/659)
+- Add CLI for controlling Spotify [#645](https://github.com/Rigellute/spotify-tui/pull/645)
+- Implement Podcasts Library page [#650](https://github.com/Rigellute/spotify-tui/pull/650)
 
 ## [0.22.0] - 2020-10-05
 
